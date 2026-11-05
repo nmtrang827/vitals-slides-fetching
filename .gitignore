@@ -1,0 +1,11 @@
+# Python virtual environment
+.venv/
+
+# OAuth credentials and tokens
+credentials/
+token.json
+*.token.json
+.env
+
+# Fetched presentation data
+output/
