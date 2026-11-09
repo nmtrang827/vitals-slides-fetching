@@ -59,6 +59,7 @@ def get_actor_ids(actors):
     return actor_ids
 
 
+
 def get_action_type(activity):
     detail = activity.get("primaryActionDetail", {})
 
@@ -66,6 +67,39 @@ def get_action_type(activity):
         return next(iter(detail.keys()))
 
     return "unknown"
+
+
+def get_action_record_type(action, fallback):
+    """
+    Google Drive Activity wraps action details inside 'detail'.
+    Extract the actual action type instead of returning 'detail'.
+    """
+    if not isinstance(action, dict):
+        return fallback
+
+    detail = action.get("detail", {})
+
+    if isinstance(detail, dict) and detail:
+        return next(iter(detail.keys()))
+
+    # Also support action records without the detail wrapper.
+    known_types = {
+        "edit",
+        "create",
+        "delete",
+        "rename",
+        "permissionChange",
+        "move",
+        "restore",
+    }
+
+    for key in action:
+        if key in known_types:
+            return key
+
+    return fallback
+
+
 
 
 def load_actor_profiles():
@@ -76,10 +110,59 @@ def load_actor_profiles():
 
     data = load_json("actor_profiles.json")
 
-    if isinstance(data, dict):
-        return data
+    profiles = {}
 
-    return {}
+    # actor_profiles.json is a list, not a dictionary.
+    if isinstance(data, list):
+        for profile in data:
+            person_resource = profile.get("person_resource")
+
+            if person_resource:
+                profiles[person_resource] = {
+                    "display_name": profile.get("display_name"),
+                    "status": profile.get("status", "unresolved"),
+                }
+
+    return profiles
+
+
+def export_permissions():
+    permissions = load_json("permissions_raw.json")
+
+    if isinstance(permissions, dict):
+        permissions = permissions.get("permissions", [])
+
+    rows = []
+
+    for permission in permissions:
+        rows.append({
+            "permission_id": permission.get("id"),
+            "display_name": permission.get("displayName"),
+            "type": permission.get("type"),
+            "role": permission.get("role"),
+            "deleted": permission.get("deleted", False),
+        })
+
+    output_path = OUTPUT / "permissions.csv"
+
+    with output_path.open(
+        "w", newline="", encoding="utf-8"
+    ) as f:
+        fieldnames = [
+            "permission_id",
+            "display_name",
+            "type",
+            "role",
+            "deleted",
+        ]
+
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"Permission records: {len(rows)}")
+    print("  output/permissions.csv")
+
 
 
 def main():
@@ -114,11 +197,7 @@ def main():
         action_records = []
 
         for action in actions:
-            action_type_from_record = (
-                next(iter(action.keys()))
-                if isinstance(action, dict) and action
-                else action_type
-            )
+            action_type_from_record = get_action_record_type(action, action_type)
 
             action_records.append({
                 "action_type": action_type_from_record,
@@ -230,10 +309,14 @@ def main():
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(revision_rows)
+        
 
     print(f"Discovered contributors: {len(contributor_rows)}")
     print(f"Activity event records: {len(activity_rows)}")
     print(f"Revision records: {len(revision_rows)}")
+    
+    export_permissions()
+    
     print("\nGenerated:")
     print("  output/contributors.json")
     print("  output/activity_events.csv")

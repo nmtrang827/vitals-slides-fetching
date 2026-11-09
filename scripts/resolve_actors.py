@@ -7,30 +7,27 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-TOKEN_FILE = Path("credentials/token.json")
-INPUT_FILE = Path("output/activity_raw.json")
-OUTPUT_FILE = Path("output/actor_profiles.json")
+ROOT = Path(__file__).resolve().parent.parent
+
+TOKEN_FILE = ROOT / "credentials" / "token.json"
+INPUT_FILE = ROOT / "output" / "activity_raw.json"
+OUTPUT_FILE = ROOT / "output" / "actor_profiles.json"
 
 SCOPES = [
     "https://www.googleapis.com/auth/presentations.readonly",
     "https://www.googleapis.com/auth/drive.readonly",
     "https://www.googleapis.com/auth/drive.activity.readonly",
     "https://www.googleapis.com/auth/userinfo.profile",
+    "https://www.googleapis.com/auth/admin.directory.user.readonly",
 ]
 
 
-def main():
-    with INPUT_FILE.open("r", encoding="utf-8") as file:
-        data = json.load(file)
-
-    activities = data if isinstance(data, list) else data.get("activities", [])
-
-    # Collect unique Google People resource names from EDIT events.
+def get_edit_actor_ids(activities):
+    """Collect unique Google actor IDs from edit events."""
     person_names = set()
 
     for activity in activities:
-        detail = activity.get("primaryActionDetail", {})
-        if "edit" not in detail:
+        if "edit" not in activity.get("primaryActionDetail", {}):
             continue
 
         for actor in activity.get("actors", []):
@@ -40,7 +37,68 @@ def main():
             if person_name:
                 person_names.add(person_name)
 
-    print(f"Found {len(person_names)} distinct actors.")
+    return sorted(person_names)
+
+
+def resolve_person(directory, person_resource):
+    """Resolve an Activity API person resource through Directory API."""
+    user_id = person_resource.split("/")[-1]
+
+    result = {
+        "person_resource": person_resource,
+        "display_name": None,
+        "status": "unresolved",
+        "error_code": None,
+        "error_message": None,
+    }
+
+    try:
+        user = directory.users().get(
+            userKey=user_id,
+            viewType="domain_public",
+            projection="basic",
+        ).execute()
+
+        name = user.get("name", {}).get("fullName")
+
+        if name:
+            result["display_name"] = name
+            result["status"] = "resolved"
+        else:
+            result["status"] = "no_display_name"
+
+    except HttpError as error:
+        result["error_code"] = error.resp.status
+        result["error_message"] = error.content.decode(
+            "utf-8", errors="replace"
+        )
+
+        if error.resp.status == 403:
+            result["status"] = "access_denied"
+        elif error.resp.status == 404:
+            result["status"] = "not_found"
+        else:
+            result["status"] = "api_error"
+
+    except Exception as error:
+        result["status"] = "unexpected_error"
+        result["error_message"] = str(error)
+
+    return result
+
+
+def main():
+    with INPUT_FILE.open("r", encoding="utf-8") as file:
+        data = json.load(file)
+
+    activities = (
+        data if isinstance(data, list)
+        else data.get("activities", [])
+    )
+
+    person_names = get_edit_actor_ids(activities)
+
+    print(f"Found {len(person_names)} distinct edit actors.")
 
     creds = Credentials.from_authorized_user_file(
         str(TOKEN_FILE), SCOPES
@@ -49,37 +107,16 @@ def main():
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
 
-    service = build("people", "v1", credentials=creds)
+    directory = build(
+        "admin",
+        "directory_v1",
+        credentials=creds,
+    )
 
     results = []
 
-    for person_name in sorted(person_names):
-        result = {
-            "person_resource": person_name,
-            "display_name": None,
-            "status": "unresolved",
-        }
-
-        try:
-            profile = service.people().get(
-                resourceName=person_name,
-                personFields="names",
-            ).execute()
-
-            names = profile.get("names", [])
-
-            if names:
-                primary_name = next(
-                    (name for name in names if name.get("metadata", {}).get("primary")),
-                    names[0],
-                )
-                result["display_name"] = primary_name.get("displayName")
-                result["status"] = "resolved"
-
-        except HttpError as error:
-            result["error"] = str(error)
-            print(f"Could not resolve {person_name}: {error}")
-
+    for person_name in person_names:
+        result = resolve_person(directory, person_name)
         results.append(result)
 
         print(
@@ -87,10 +124,18 @@ def main():
             f"{result['display_name'] or result['status']}"
         )
 
+        if result["error_message"]:
+            print("  Details:", result["error_message"])
+
     with OUTPUT_FILE.open("w", encoding="utf-8") as file:
         json.dump(results, file, indent=2, ensure_ascii=False)
 
-    print(f"\nSaved results to {OUTPUT_FILE}")
+    resolved = sum(
+        result["status"] == "resolved" for result in results
+    )
+
+    print(f"\nResolved: {resolved}/{len(results)} actors")
+    print(f"Saved results to: {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":
