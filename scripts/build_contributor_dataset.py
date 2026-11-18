@@ -70,10 +70,6 @@ def get_action_type(activity):
 
 
 def get_action_record_type(action, fallback):
-    """
-    Google Drive Activity wraps action details inside 'detail'.
-    Extract the actual action type instead of returning 'detail'.
-    """
     if not isinstance(action, dict):
         return fallback
 
@@ -82,7 +78,6 @@ def get_action_record_type(action, fallback):
     if isinstance(detail, dict) and detail:
         return next(iter(detail.keys()))
 
-    # Also support action records without the detail wrapper.
     known_types = {
         "edit",
         "create",
@@ -112,7 +107,6 @@ def load_actor_profiles():
 
     profiles = {}
 
-    # actor_profiles.json is a list, not a dictionary.
     if isinstance(data, list):
         for profile in data:
             person_resource = profile.get("person_resource")
@@ -191,7 +185,6 @@ def main():
         action_type = get_action_type(activity)
         activity_timestamp = get_timestamp(activity.get("timestamp"))
 
-        # Prefer action-level actor/timestamp if available.
         actions = activity.get("actions", [])
 
         action_records = []
@@ -255,7 +248,6 @@ def main():
                     "action_type": record["action_type"],
                 })
 
-    # Export contributor records.
     contributor_rows = []
 
     for actor_id in sorted(contributors):
@@ -273,7 +265,6 @@ def main():
     with (OUTPUT / "contributors.json").open("w", encoding="utf-8") as f:
         json.dump(contributor_rows, f, indent=2, ensure_ascii=False)
 
-    # Export individual activity events.
     with (OUTPUT / "activity_events.csv").open(
         "w", newline="", encoding="utf-8"
     ) as f:
@@ -282,7 +273,6 @@ def main():
         writer.writeheader()
         writer.writerows(activity_rows)
 
-    # Keep revision authors separate from activity actors.
     revision_rows = []
 
     for revision in revisions:

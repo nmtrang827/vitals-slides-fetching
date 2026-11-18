@@ -34,7 +34,6 @@ def main():
         else data.get("activities", [])
     )
 
-    # Build an ID-to-name lookup from resolved profiles.
     actor_names = {
         profile["person_resource"]: profile["display_name"]
         for profile in profiles
@@ -66,7 +65,6 @@ def main():
             })
             continue
 
-        # Preserve all actor IDs if an event has multiple actors.
         names = [
             actor_names.get(actor_id, "Unknown")
             for actor_id in actor_ids
@@ -79,7 +77,6 @@ def main():
             "person_resource": "; ".join(actor_ids),
         })
 
-    # Sort chronologically.
     rows.sort(key=lambda row: row["timestamp_utc"])
 
     with OUTPUT_FILE.open("w", newline="", encoding="utf-8") as file:

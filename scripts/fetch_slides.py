@@ -10,7 +10,6 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 
-# Paths are relative to the repository root, not the current terminal directory.
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CREDENTIALS_DIR = ROOT_DIR / "credentials"
 OUTPUT_DIR = ROOT_DIR / "output"
@@ -20,7 +19,6 @@ TOKEN_PATH = CREDENTIALS_DIR / "token.json"
 
 PRESENTATION_ID = "1n-UtYz_pCoUk_fPlTmf58mQdPUgFMrcWBX2Kwaxlxy8"
 
-# Read-only access to Google Slides.
 SCOPES = [
     "https://www.googleapis.com/auth/presentations.readonly",
     "https://www.googleapis.com/auth/drive.readonly",

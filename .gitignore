@@ -1,11 +1,19 @@
-# Python virtual environment
 .venv/
 
-# OAuth credentials and tokens
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
 credentials/
 token.json
 *.token.json
 .env
+.env.*
 
-# Fetched presentation data
 output/
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

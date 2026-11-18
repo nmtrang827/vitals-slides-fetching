@@ -21,7 +21,6 @@ def fetch_revisions():
         cache_discovery=False,
     )
     
-        # Test retrieving one specific revision
     try:
         revision = drive_service.revisions().get(
             fileId=PRESENTATION_ID,
