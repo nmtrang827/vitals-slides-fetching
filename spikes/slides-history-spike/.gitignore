@@ -1,0 +1,10 @@
+# Real deck data: changelogs, exports and reports contain names, deck text and IDs.
+data/
+*.pptx
+*.decoded.json
+report.json
+slides-changelog-*.json
+
+# Python
+__pycache__/
+*.pyc

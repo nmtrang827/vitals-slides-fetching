@@ -1,0 +1,46 @@
+{
+ "docId": "SAMPLE_DECK_ID",
+ "ops_by_code": {
+  "3 create": 5,
+  "12 create_slide": 1,
+  "15 insert_text": 140,
+  "16 delete_text": 21,
+  "17 style_text": 18
+ },
+ "elements_created": 5,
+ "elements_by_kind": {
+  "108": 3,
+  "3": 1,
+  "1": 1
+ },
+ "elements_by_category": {
+  "text": 3,
+  "image": 1,
+  "shape": 1
+ },
+ "slides_seen": 1,
+ "events": 185,
+ "events_with_slide": 185,
+ "events_by_category": {
+  "slide": 1,
+  "text": 182,
+  "image": 1,
+  "shape": 1
+ },
+ "ops_on_unknown_elements": {},
+ "sessions": 8
+}
+
+Per-slide work sessions (author, time, category, actions):
+
+  slide 1 (g3cc5ca4f196_2_0): 8 sessions
+    2026-03-02 22:44  Editor A                     slide      create_slidex1
+    2026-03-02 22:44  Editor A                     text       createx1,insert_textx2,delete_textx1 +12/-2 chars "lorem xips e"
+    2026-03-02 22:44  Editor A                     text       createx1,insert_textx60,delete_textx16,style_textx17 +127/-97 chars "umxdolorx s itxametx consect etur xadipt"
+    2026-03-02 22:44  Editor A                     text       createx1,insert_textx77,delete_textx3 +274/-207 chars "isci ngxe litxsedxd oxe iusmodxt emp orx"
+    2026-03-02 22:44  Editor A                     image      createx1
+    2026-03-02 22:44  Editor A                     shape      createx1
+    2026-03-02 23:20  Editor B                     text       style_textx1
+    2026-03-02 23:49  Editor B                     text       delete_textx1,insert_textx1 +1/-2 chars "p"
+
+Full output: examples/changelog-sample.decoded.json
